@@ -1,0 +1,29 @@
+experiment:
+  name: mvp_replay_baseline
+  input_source: replay_video
+  scenario: indoor_corridor
+  duration_seconds: 30
+  replay_path: "data/replay/sample_corridor.mp4"
+
+pipeline:
+  camera:
+    resolution: "1080p"
+    fps: 30
+
+  imagemanip:
+    resize_mode: "letterbox"
+    output_size: [416, 416]
+
+  nn:
+    type: "detection"
+    model_name: "yolov6n"
+    confidence_threshold: 0.35
+
+  tracker:
+    enabled: true
+
+outputs:
+  live_view: true
+  save_video: true
+  save_metrics: true
+  save_events: true
