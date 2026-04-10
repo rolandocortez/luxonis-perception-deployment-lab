@@ -11,17 +11,21 @@ from src.pipeline_spec.models import PipelineSpec
 
 def build_pipeline_from_spec(spec: PipelineSpec) -> BuiltPipeline:
     """
-    Build a DepthAI pipeline from a validated PipelineSpec.
+    Build a DepthAI v3 pipeline from a validated PipelineSpec.
 
-    First implementation scope:
+    Current implementation scope:
     - live camera only
     - ImageManip + DetectionNetwork
     - tracker on/off
+
+    Important:
+    In DepthAI v3, explicit XLink nodes are removed from the normal workflow.
+    Host queues are created directly from output handles.
     """
     if spec.experiment.input_source != "live_camera":
         raise NotImplementedError(
-            "Hito 6 currently supports only input_source='live_camera'. "
-            "Replay/video input comes later with the runner/replay stages."
+            "Hito 7 currently supports only input_source='live_camera'. "
+            "Replay/video input comes later in Hito 8."
         )
 
     pipeline = dai.Pipeline()
@@ -42,13 +46,13 @@ def build_pipeline_from_spec(spec: PipelineSpec) -> BuiltPipeline:
         manip_node=manip,
     )
 
-    output_streams = {
-        "nn_input_frame": "manip.out",
-        "detections": "detection.out",
+    outputs = {
+        "preprocessed_frame": manip.out,
+        "detections": detection.out,
     }
 
     if tracker is not None:
-        output_streams["tracklets"] = "tracker.out"
+        outputs["tracklets"] = tracker.out
 
     metadata = {
         "input_source": spec.experiment.input_source,
@@ -62,6 +66,6 @@ def build_pipeline_from_spec(spec: PipelineSpec) -> BuiltPipeline:
 
     return BuiltPipeline(
         pipeline=pipeline,
-        output_streams=output_streams,
+        outputs=outputs,
         metadata=metadata,
     )

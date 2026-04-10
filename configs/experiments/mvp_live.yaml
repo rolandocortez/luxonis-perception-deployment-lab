@@ -11,7 +11,7 @@ pipeline:
 
   imagemanip:
     resize_mode: "letterbox"
-    output_size: [416, 416]
+    output_size: [512, 384]
 
   nn:
     type: "detection"

@@ -7,5 +7,5 @@ from typing import Any
 @dataclass
 class BuiltPipeline:
     pipeline: Any
-    output_streams: dict[str, str]
+    outputs: dict[str, Any]
     metadata: dict[str, Any]

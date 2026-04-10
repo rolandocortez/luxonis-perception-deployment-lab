@@ -6,8 +6,8 @@ import typer
 from rich import print
 from rich.console import Console
 
-from src.pipeline_builder.build_pipeline import build_pipeline_from_spec
 from src.pipeline_spec.load_spec import load_pipeline_spec
+from src.runner.live_runner import run_live_pipeline
 
 app = typer.Typer(help="Luxonis Perception Deployment & Reliability Lab CLI")
 console = Console()
@@ -16,14 +16,9 @@ console = Console()
 @app.command()
 def run(
     config: str = typer.Option(..., "--config", "-c", help="Path to experiment YAML config"),
-    build_only: bool = typer.Option(
-        True,
-        "--build-only/--no-build-only",
-        help="For Hito 6, just build the pipeline graph and print metadata.",
-    ),
 ) -> None:
     """
-    Load, validate and build a pipeline specification.
+    Load, validate and run the live camera pipeline.
     """
     config_path = Path(config)
 
@@ -35,18 +30,14 @@ def run(
     console.rule("[bold green]Spec loaded successfully[/bold green]")
     print(spec)
 
-    console.rule("[bold blue]Building DepthAI pipeline[/bold blue]")
-    built = build_pipeline_from_spec(spec)
+    if spec.experiment.input_source == "live_camera":
+        console.rule("[bold blue]Running live pipeline[/bold blue]")
+        run_live_pipeline(spec)
+        return
 
-    console.rule("[bold green]Pipeline built successfully[/bold green]")
-    print(built.metadata)
-    print(f"[magenta]Output streams:[/magenta] {built.output_streams}")
-
-    if not build_only:
-        print(
-            "[yellow]Hito 6 currently stops at build validation.[/yellow] "
-            "Live execution and queue handling belong to Hito 7."
-        )
+    raise NotImplementedError(
+        "Only live_camera is supported at Hito 7. Replay/video comes in Hito 8."
+    )
 
 
 if __name__ == "__main__":
