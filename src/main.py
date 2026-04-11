@@ -8,6 +8,7 @@ from rich.console import Console
 
 from src.pipeline_spec.load_spec import load_pipeline_spec
 from src.runner.live_runner import run_live_pipeline
+from src.runner.video_runner import run_replay_pipeline
 
 app = typer.Typer(help="Luxonis Perception Deployment & Reliability Lab CLI")
 console = Console()
@@ -18,7 +19,7 @@ def run(
     config: str = typer.Option(..., "--config", "-c", help="Path to experiment YAML config"),
 ) -> None:
     """
-    Load, validate and run the live camera pipeline.
+    Load, validate and run the configured pipeline.
     """
     config_path = Path(config)
 
@@ -35,8 +36,13 @@ def run(
         run_live_pipeline(spec)
         return
 
+    if spec.experiment.input_source == "replay_video":
+        console.rule("[bold blue]Running replay pipeline[/bold blue]")
+        run_replay_pipeline(spec, config_path)
+        return
+
     raise NotImplementedError(
-        "Only live_camera is supported at Hito 7. Replay/video comes in Hito 8."
+        f"Unsupported input_source: {spec.experiment.input_source}"
     )
 
 

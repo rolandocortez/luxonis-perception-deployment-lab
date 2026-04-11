@@ -4,6 +4,7 @@ import depthai as dai
 
 from src.pipeline_builder.camera_factory import build_camera
 from src.pipeline_builder.nn_factory import build_preprocess_and_detection
+from src.pipeline_builder.replay_factory import build_replay_video
 from src.pipeline_builder.tracker_factory import build_tracker
 from src.pipeline_builder.types import BuiltPipeline
 from src.pipeline_spec.models import PipelineSpec
@@ -13,28 +14,33 @@ def build_pipeline_from_spec(spec: PipelineSpec) -> BuiltPipeline:
     """
     Build a DepthAI v3 pipeline from a validated PipelineSpec.
 
-    Current implementation scope:
-    - live camera only
-    - ImageManip + DetectionNetwork
-    - tracker on/off
-
-    Important:
-    In DepthAI v3, explicit XLink nodes are removed from the normal workflow.
-    Host queues are created directly from output handles.
+    Supports:
+    - live_camera
+    - replay_video
     """
-    if spec.experiment.input_source != "live_camera":
-        raise NotImplementedError(
-            "Hito 7 currently supports only input_source='live_camera'. "
-            "Replay/video input comes later in Hito 8."
-        )
-
     pipeline = dai.Pipeline()
 
-    camera, camera_output = build_camera(pipeline, spec.pipeline.camera)
+    if spec.experiment.input_source == "live_camera":
+        _, input_output = build_camera(pipeline, spec.pipeline.camera)
+
+    elif spec.experiment.input_source == "replay_video":
+        if spec.experiment.replay_path is None:
+            raise ValueError(
+                "experiment.replay_path must be provided for input_source='replay_video'"
+            )
+
+        replay = build_replay_video(pipeline, spec.experiment.replay_path)
+        # ReplayVideo in v3 can usually expose an output suitable for NN input
+        input_output = replay.out
+
+    else:
+        raise NotImplementedError(
+            f"Unsupported input_source: {spec.experiment.input_source}"
+        )
 
     manip, detection, model_meta = build_preprocess_and_detection(
         pipeline=pipeline,
-        camera_output=camera_output,
+        input_output=input_output,
         imagemanip_cfg=spec.pipeline.imagemanip,
         nn_cfg=spec.pipeline.nn,
     )

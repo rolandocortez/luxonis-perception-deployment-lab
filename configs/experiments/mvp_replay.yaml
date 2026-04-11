@@ -3,7 +3,7 @@ experiment:
   input_source: replay_video
   scenario: indoor_corridor
   duration_seconds: 30
-  replay_path: "data/replay/sample_corridor.mp4"
+  replay_path: "data/replay/baile.mp4"
 
 pipeline:
   camera:

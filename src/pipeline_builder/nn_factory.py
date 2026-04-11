@@ -34,7 +34,7 @@ def _resolve_resize_mode(resize_mode: str):
 
 def build_preprocess_and_detection(
     pipeline: dai.Pipeline,
-    camera_output,
+    input_output,
     imagemanip_cfg: ImageManipConfig,
     nn_cfg: NeuralNetworkConfig,
 ):
@@ -55,7 +55,7 @@ def build_preprocess_and_detection(
         imagemanip_cfg.output_size[0] * imagemanip_cfg.output_size[1] * 3
     )
 
-    camera_output.link(manip.inputImage)
+    input_output.link(manip.inputImage)
 
     detection = pipeline.create(dai.node.DetectionNetwork)
     detection.setConfidenceThreshold(nn_cfg.confidence_threshold)
