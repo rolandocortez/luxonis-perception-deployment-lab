@@ -14,13 +14,12 @@ from src.profiler.pipeline_timing import FrameTimer
 from src.recorder_replay.session_manifest import write_session_manifest
 from src.runner.output_writer import close_writer, create_video_writer, write_frame
 from src.runner.render import render_frame
+from src.validator.detection_stability import extract_detection_snapshot
+from src.validator.tracking_stability import extract_track_snapshot
+from src.validator.run_quality import compute_run_quality, save_run_quality
 
 
 def _safe_detection_count(msg: Any) -> int:
-    """
-    Return the number of detections in a DetectionNetwork message.
-    Falls back to 0 if the message shape is not what we expect.
-    """
     try:
         detections = getattr(msg, "detections", None)
         if detections is None:
@@ -31,10 +30,6 @@ def _safe_detection_count(msg: Any) -> int:
 
 
 def _safe_tracklet_count(msg: Any) -> int:
-    """
-    Return the number of tracklets in an ObjectTracker message.
-    Falls back to 0 if the message shape is not what we expect.
-    """
     try:
         tracklets = getattr(msg, "tracklets", None)
         if tracklets is None:
@@ -52,6 +47,7 @@ def run_replay_pipeline(spec: PipelineSpec, config_path: Path) -> None:
     - FPS is estimated from inter-frame arrival time.
     - frame_interval is NOT true end-to-end pipeline latency.
     - Detection and track counts are recorded only when new messages arrive.
+    - Perceptual validation is computed from detection and tracking histories.
     """
     run_id = f"replay_{uuid.uuid4().hex[:8]}"
     profiler = MetricsCollector(run_id)
@@ -62,6 +58,9 @@ def run_replay_pipeline(spec: PipelineSpec, config_path: Path) -> None:
     latest_frame = None
     latest_detections = None
     latest_tracklets = None
+
+    detection_history: list[list[dict]] = []
+    track_history: list[list[dict]] = []
 
     fps = 0.0
     writer = None
@@ -122,6 +121,7 @@ def run_replay_pipeline(spec: PipelineSpec, config_path: Path) -> None:
                 if msg is not None:
                     latest_detections = msg
                     profiler.record_detections(_safe_detection_count(msg))
+                    detection_history.append(extract_detection_snapshot(msg))
 
             tr_queue = queues.get("tracklets")
             if tr_queue is not None:
@@ -129,6 +129,7 @@ def run_replay_pipeline(spec: PipelineSpec, config_path: Path) -> None:
                 if msg is not None:
                     latest_tracklets = msg
                     profiler.record_tracks(_safe_tracklet_count(msg))
+                    track_history.append(extract_track_snapshot(msg))
 
             if got_new_frame and latest_frame is not None:
                 rendered = render_frame(
@@ -164,6 +165,14 @@ def run_replay_pipeline(spec: PipelineSpec, config_path: Path) -> None:
         metrics = profiler.finalize()
         metrics_path = save_metrics(metrics, output_metrics_dir)
         print(f"[video_runner] Metrics saved at: {metrics_path}")
+
+        run_quality = compute_run_quality(
+            run_id=run_id,
+            detection_history=detection_history,
+            track_history=track_history,
+        )
+        quality_path = save_run_quality(run_quality, output_metrics_dir)
+        print(f"[video_runner] Quality saved at: {quality_path}")
 
         close_writer(writer)
         cv2.destroyAllWindows()
