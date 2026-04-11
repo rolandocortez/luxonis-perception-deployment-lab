@@ -1,0 +1,7 @@
+base_config: configs/experiments/mvp_replay.yaml
+
+grid:
+  pipeline.camera.resolution: ["720p", "1080p"]
+  pipeline.imagemanip.resize_mode: ["crop", "letterbox", "stretch"]
+  pipeline.tracker.enabled: [true, false]
+  pipeline.nn.confidence_threshold: [0.25, 0.35, 0.50]
