@@ -105,6 +105,7 @@ def load_pipeline_spec(path: str | Path) -> PipelineSpec:
         scenario=validate_non_empty_string(experiment_raw["scenario"], "experiment.scenario"),
         duration_seconds=validate_duration_seconds(experiment_raw["duration_seconds"]),
         replay_path=validate_replay_path(input_source, experiment_raw.get("replay_path")),
+        variant_id=experiment_raw.get("variant_id"),
     )
 
     camera = CameraConfig(

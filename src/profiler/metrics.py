@@ -5,11 +5,13 @@ import statistics
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from typing import Optional
 
 
 @dataclass
 class RunMetrics:
     run_id: str
+    variant_id: Optional[str]
     started_at: float
     ended_at: float
     duration_seconds: float
@@ -36,8 +38,9 @@ class MetricsCollector:
     - It measures time between newly processed frames in the runner.
     """
 
-    def __init__(self, run_id: str):
+    def __init__(self, run_id: str, variant_id: Optional[str] = None):
         self.run_id = run_id
+        self.variant_id = variant_id
 
         self.start_time = time.time()
         self.end_time: float | None = None
@@ -51,7 +54,6 @@ class MetricsCollector:
     def record_frame(self, timestamp: float, frame_interval: float) -> None:
         self.frame_timestamps.append(timestamp)
 
-        # Skip the first 0.0 interval if desired from summary stats
         if frame_interval > 0:
             self.frame_intervals.append(frame_interval)
 
@@ -101,6 +103,7 @@ class MetricsCollector:
 
         return RunMetrics(
             run_id=self.run_id,
+            variant_id=self.variant_id,
             started_at=self.start_time,
             ended_at=self.end_time,
             duration_seconds=duration,
@@ -126,10 +129,11 @@ class MetricsCollector:
         )
 
 
-def save_metrics(metrics: RunMetrics, output_dir: Path) -> Path:
+def save_metrics(metrics: RunMetrics, output_dir: Path, preferred_name: str | None = None) -> Path:
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    path = output_dir / f"{metrics.run_id}.json"
+    basename = preferred_name if preferred_name else metrics.run_id
+    path = output_dir / f"{basename}.json"
     with path.open("w", encoding="utf-8") as f:
         json.dump(asdict(metrics), f, indent=2)
 

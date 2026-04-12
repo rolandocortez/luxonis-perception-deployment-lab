@@ -49,8 +49,10 @@ def run_replay_pipeline(spec: PipelineSpec, config_path: Path) -> None:
     - Detection and track counts are recorded only when new messages arrive.
     - Perceptual validation is computed from detection and tracking histories.
     """
-    run_id = f"replay_{uuid.uuid4().hex[:8]}"
-    profiler = MetricsCollector(run_id)
+    variant_id = spec.experiment.variant_id
+    run_id = variant_id if variant_id else f"replay_{uuid.uuid4().hex[:8]}"
+
+    profiler = MetricsCollector(run_id=run_id, variant_id=variant_id)
     timer = FrameTimer()
 
     built = build_pipeline_from_spec(spec)
@@ -76,13 +78,16 @@ def run_replay_pipeline(spec: PipelineSpec, config_path: Path) -> None:
         except Exception as exc:
             print(f"[video_runner] Could not create output queue for '{name}': {exc}")
 
+    manifest_metadata = dict(built.metadata)
+    manifest_metadata["variant_id"] = variant_id
+
     manifest_path = write_session_manifest(
         output_dir=output_reports_dir,
         run_id=run_id,
         config_path=config_path,
         input_source=spec.experiment.input_source,
         input_path=spec.experiment.replay_path,
-        metadata=built.metadata,
+        metadata=manifest_metadata,
     )
     print(f"[video_runner] Session manifest: {manifest_path}")
 
@@ -163,15 +168,16 @@ def run_replay_pipeline(spec: PipelineSpec, config_path: Path) -> None:
 
     finally:
         metrics = profiler.finalize()
-        metrics_path = save_metrics(metrics, output_metrics_dir)
+        metrics_path = save_metrics(metrics, output_metrics_dir, preferred_name=run_id)
         print(f"[video_runner] Metrics saved at: {metrics_path}")
 
         run_quality = compute_run_quality(
             run_id=run_id,
             detection_history=detection_history,
             track_history=track_history,
+            variant_id=variant_id,
         )
-        quality_path = save_run_quality(run_quality, output_metrics_dir)
+        quality_path = save_run_quality(run_quality, output_metrics_dir, preferred_name=run_id)
         print(f"[video_runner] Quality saved at: {quality_path}")
 
         close_writer(writer)

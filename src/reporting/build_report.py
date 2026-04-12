@@ -57,7 +57,15 @@ def flatten_variant_row(variant: dict[str, Any], metrics: dict[str, Any] | None,
         "avg_fps": round(float(metrics.get("avg_fps", 0.0)), 3) if metrics else "N/A",
         "avg_frame_interval_ms": round(float(metrics.get("avg_frame_interval_ms", 0.0)), 3) if metrics else "N/A",
         "quality_score": round(float(quality.get("overall_quality_score", 0.0)), 3) if quality else "N/A",
+        "has_results": bool(metrics or quality),
     }
+
+
+def _safe_mean_numeric(rows: list[dict[str, Any]], key: str) -> float | None:
+    values = [row[key] for row in rows if isinstance(row.get(key), (int, float))]
+    if not values:
+        return None
+    return sum(values) / len(values)
 
 
 def build_comparison_sections(rows: list[dict[str, Any]]) -> list[str]:
@@ -66,31 +74,34 @@ def build_comparison_sections(rows: list[dict[str, Any]]) -> list[str]:
     # crop vs letterbox vs stretch
     by_resize = defaultdict(list)
     for row in rows:
-        by_resize[str(row["resize_mode"])].append(row)
+        if row.get("has_results"):
+            by_resize[str(row["resize_mode"])].append(row)
 
     resize_body_lines = []
     for resize_mode in ("crop", "letterbox", "stretch"):
         subset = by_resize.get(resize_mode, [])
         if not subset:
+            resize_body_lines.append(f"- **{resize_mode}** → _no executed variants with results yet_")
             continue
 
         avg_quality = _safe_mean_numeric(subset, "quality_score")
         avg_fps = _safe_mean_numeric(subset, "avg_fps")
         resize_body_lines.append(
-            f"- **{resize_mode}** → avg quality: `{avg_quality:.3f}`, avg fps: `{avg_fps:.3f}`"
+            f"- **{resize_mode}** → avg quality: `{avg_quality:.3f}`, avg fps: `{avg_fps:.3f}`, sample count: `{len(subset)}`"
         )
 
     sections.append(
         render_section(
             "Resize Mode Comparison",
-            "\n".join(resize_body_lines) if resize_body_lines else "_No resize comparisons available._",
+            "\n".join(resize_body_lines),
         )
     )
 
     # tracker on vs off
     by_tracker = defaultdict(list)
     for row in rows:
-        by_tracker[str(row["tracker"])].append(row)
+        if row.get("has_results"):
+            by_tracker[str(row["tracker"])].append(row)
 
     tracker_body_lines = []
     for tracker_state in ("True", "False", "true", "false"):
@@ -101,65 +112,63 @@ def build_comparison_sections(rows: list[dict[str, Any]]) -> list[str]:
         avg_quality = _safe_mean_numeric(subset, "quality_score")
         avg_fps = _safe_mean_numeric(subset, "avg_fps")
         tracker_body_lines.append(
-            f"- **tracker={tracker_state}** → avg quality: `{avg_quality:.3f}`, avg fps: `{avg_fps:.3f}`"
+            f"- **tracker={tracker_state}** → avg quality: `{avg_quality:.3f}`, avg fps: `{avg_fps:.3f}`, sample count: `{len(subset)}`"
         )
+
+    if not tracker_body_lines:
+        tracker_body_lines = ["_No tracker comparisons available yet._"]
 
     sections.append(
         render_section(
             "Tracker Comparison",
-            "\n".join(tracker_body_lines) if tracker_body_lines else "_No tracker comparisons available._",
+            "\n".join(tracker_body_lines),
         )
     )
 
     # 720p vs 1080p
     by_resolution = defaultdict(list)
     for row in rows:
-        by_resolution[str(row["resolution"])].append(row)
+        if row.get("has_results"):
+            by_resolution[str(row["resolution"])].append(row)
 
     resolution_body_lines = []
     for resolution in ("720p", "1080p"):
         subset = by_resolution.get(resolution, [])
         if not subset:
+            resolution_body_lines.append(f"- **{resolution}** → _no executed variants with results yet_")
             continue
 
         avg_quality = _safe_mean_numeric(subset, "quality_score")
         avg_fps = _safe_mean_numeric(subset, "avg_fps")
         resolution_body_lines.append(
-            f"- **{resolution}** → avg quality: `{avg_quality:.3f}`, avg fps: `{avg_fps:.3f}`"
+            f"- **{resolution}** → avg quality: `{avg_quality:.3f}`, avg fps: `{avg_fps:.3f}`, sample count: `{len(subset)}`"
         )
 
     sections.append(
         render_section(
             "Resolution Comparison",
-            "\n".join(resolution_body_lines) if resolution_body_lines else "_No resolution comparisons available._",
+            "\n".join(resolution_body_lines),
         )
     )
 
     return sections
 
 
-def _safe_mean_numeric(rows: list[dict[str, Any]], key: str) -> float:
-    values = [row[key] for row in rows if isinstance(row.get(key), (int, float))]
-    if not values:
-        return 0.0
-    return sum(values) / len(values)
-
-
 def build_recommendation(rows: list[dict[str, Any]]) -> str:
-    if not rows:
-        return "_No recommendation available._"
-
     scored_rows = [
         row for row in rows
-        if isinstance(row.get("quality_score"), (int, float))
+        if row.get("has_results")
+        and isinstance(row.get("quality_score"), (int, float))
         and isinstance(row.get("avg_fps"), (int, float))
     ]
 
     if not scored_rows:
-        return "_No recommendation available._"
+        return (
+            "_No recommendation available yet._\n\n"
+            "Run at least one generated variant spec so the report can join "
+            "`variant_id` with metrics and quality results."
+        )
 
-    # Simple weighted heuristic for Hito 12:
-    # prioritize quality, but keep FPS in the decision
     best_row = max(
         scored_rows,
         key=lambda r: (0.7 * float(r["quality_score"])) + (0.3 * min(float(r["avg_fps"]) / 30.0, 1.0)),
@@ -219,10 +228,13 @@ def run(
                 )
             )
 
+    executed_count = sum(1 for row in rows if row.get("has_results"))
+
     summary_table = render_kv_table(
         {
             "campaign_id": campaign_id,
             "variant_count": len(variants),
+            "executed_variants_with_results": executed_count,
             "campaign_manifest": str(campaign_manifest_path),
             "metrics_dir": str(metrics_dir_path),
         }

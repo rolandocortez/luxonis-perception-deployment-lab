@@ -11,6 +11,7 @@ class ExperimentConfig:
     scenario: str
     duration_seconds: int
     replay_path: Optional[str] = None
+    variant_id: Optional[str] = None
 
 
 @dataclass(frozen=True)
