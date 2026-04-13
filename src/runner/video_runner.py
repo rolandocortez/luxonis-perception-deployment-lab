@@ -37,6 +37,9 @@ def _safe_tracklet_count(msg: Any) -> int:
         return len(tracklets)
     except Exception:
         return 0
+    
+def _is_queue_closed_exception(exc: Exception) -> bool:
+    return "MessageQueue was closed" in str(exc)
 
 
 def run_replay_pipeline(spec: PipelineSpec, config_path: Path) -> None:
@@ -99,7 +102,14 @@ def run_replay_pipeline(spec: PipelineSpec, config_path: Path) -> None:
 
             frame_queue = queues.get("preprocessed_frame")
             if frame_queue is not None:
-                msg = frame_queue.tryGet()
+                try:
+                    msg = frame_queue.tryGet()
+                except Exception as exc:
+                    if _is_queue_closed_exception(exc):
+                        print("[video_runner] Replay stream ended (frame queue closed).")
+                        break
+                    raise
+
                 if msg is not None:
                     try:
                         latest_frame = msg.getCvFrame()
@@ -122,7 +132,14 @@ def run_replay_pipeline(spec: PipelineSpec, config_path: Path) -> None:
 
             det_queue = queues.get("detections")
             if det_queue is not None:
-                msg = det_queue.tryGet()
+                try:
+                    msg = det_queue.tryGet()
+                except Exception as exc:
+                    if _is_queue_closed_exception(exc):
+                        msg = None
+                    else:
+                        raise
+
                 if msg is not None:
                     latest_detections = msg
                     profiler.record_detections(_safe_detection_count(msg))
@@ -130,7 +147,14 @@ def run_replay_pipeline(spec: PipelineSpec, config_path: Path) -> None:
 
             tr_queue = queues.get("tracklets")
             if tr_queue is not None:
-                msg = tr_queue.tryGet()
+                try:
+                    msg = tr_queue.tryGet()
+                except Exception as exc:
+                    if _is_queue_closed_exception(exc):
+                        msg = None
+                    else:
+                        raise
+
                 if msg is not None:
                     latest_tracklets = msg
                     profiler.record_tracks(_safe_tracklet_count(msg))
