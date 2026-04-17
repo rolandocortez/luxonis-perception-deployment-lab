@@ -34,6 +34,11 @@ def load_json(path: Path) -> dict[str, Any]:
 
     return data
 
+def load_optional_json(path: Path) -> dict[str, Any] | None:
+    if not path.exists():
+        return None
+    return load_json(path)
+
 
 def find_metrics_for_variant(variant_id: str, metrics_dir: Path) -> dict[str, Any] | None:
     path = metrics_dir / f"{variant_id}.json"
@@ -201,6 +206,8 @@ def run(
 
     manifest = load_json(campaign_manifest_path)
     campaign_id = manifest.get("campaign_id", "unknown_campaign")
+    recommendation_path = Path("outputs/reports") / f"{campaign_id}_recommendation.json"
+    recommendation_json = load_optional_json(recommendation_path)
     variants = manifest.get("variants", [])
 
     if not isinstance(variants, list):
@@ -243,7 +250,29 @@ def run(
     variant_table = render_variant_table(rows)
     comparison_sections = build_comparison_sections(rows)
     comparison_sections.extend(image_sections)
-    recommendation = build_recommendation(rows)
+    if recommendation_json and recommendation_json.get("best_variant"):
+        best = recommendation_json["best_variant"]
+        insights = recommendation_json.get("insights", [])
+        recommendation_lines = [
+            f"**Recommended configuration:** `{best['variant_id']}`",
+            "",
+            f"- resolution: `{best['resolution']}`",
+            f"- resize_mode: `{best['resize_mode']}`",
+            f"- tracker: `{best['tracker']}`",
+            f"- confidence: `{best['confidence']}`",
+            f"- avg_fps: `{best['avg_fps']}`",
+            f"- quality_score: `{best['quality_score']}`",
+        ]
+        if insights:
+            recommendation_lines.append("")
+            recommendation_lines.append("### Rule-based insights")
+            recommendation_lines.append("")
+            for insight in insights:
+                recommendation_lines.append(f"- {insight}")
+
+        recommendation = "\n".join(recommendation_lines)
+    else:
+        recommendation = build_recommendation(rows)
 
     report_markdown = render_report(
         title=f"Experiment Report — {campaign_id}",
