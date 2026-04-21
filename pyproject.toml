@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "luxonis-perception-deployment-lab"
+version = "0.1.0"
+description = "A modular experimentation framework for evaluating Luxonis / DepthAI perception pipelines."
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [
+  { name = "Rolando Cortez" }
+]
+license = { text = "MIT" }
+
+dependencies = [
+  "depthai",
+  "opencv-python",
+  "numpy",
+  "pyyaml",
+  "rich",
+  "typer",
+  "pandas",
+  "matplotlib"
+]
+
+[project.scripts]
+luxonis-lab = "src.main:app"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
