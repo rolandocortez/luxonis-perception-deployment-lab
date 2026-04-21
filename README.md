@@ -4,6 +4,20 @@ A modular experimentation framework for designing, running, benchmarking, and re
 
 ## Overview
 
+## System flow
+
+```mermaid
+flowchart LR
+    A[Experiment YAML] --> B[Spec Loader + Validation]
+    B --> C[Pipeline Builder]
+    C --> D[Runner]
+    D --> E[Metrics]
+    D --> F[Perceptual Quality]
+    E --> G[Campaign Report]
+    F --> G
+    G --> H[Rule-Based Recommendation]
+```
+
 This repository implements an end-to-end lab for evaluating perception pipelines at the **system level**. Rather than stopping at “the model runs,” it focuses on the full deployment loop:
 
 - declarative experiment definition,
