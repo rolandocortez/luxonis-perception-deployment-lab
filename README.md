@@ -1,6 +1,6 @@
-# Luxonis Perception Deployment Lab
+# Edge Perception Deployment Lab
 
-A modular experimentation framework for designing, running, benchmarking, and recommending perception pipeline configurations on **Luxonis / DepthAI** devices.
+A modular experimentation framework for designing, running, benchmarking, and validating real-time edge perception pipelines under deployment-oriented conditions.
 
 ## Overview
 
@@ -58,7 +58,7 @@ This project is built to answer the questions that matter during deployment:
 - Do `crop`, `letterbox`, or `stretch` produce better deployment behavior?
 - How can multiple configurations be compared reproducibly and documented clearly?
 
-This makes the repository more than an inference demo. It is a **deployment evaluation and decision framework** for Luxonis perception pipelines.
+This makes the repository more than an inference demo. It is a deployment evaluation and decision framework for real-world edge perception systems.
 
 ---
 
@@ -123,7 +123,7 @@ This keeps the codebase extensible and easier to evolve than an ad hoc script-ba
 
 ### Live runner
 
-The project supports real-time execution on an OAK device with:
+The project supports real-time execution on edge AI vision devices such as OAK cameras with:
 
 - live visualization,
 - bounding boxes,
@@ -141,7 +141,7 @@ python -m src.main --config configs/experiments/mvp_live.yaml
 
 ### Replay runner
 
-The project also supports reproducible replay on recorded video through `ReplayVideo`, enabling:
+The project also supports reproducible replay on recorded video through replay-based execution modules, enabling:
 
 - repeated evaluation on identical input,
 - fair comparison across variants,
@@ -309,7 +309,7 @@ This keeps the following concerns clearly separated:
 ## Repository structure
 
 ```text
-luxonis-perception-deployment-lab/
+edge-perception-deployment-lab/
 ├── .gitignore
 ├── pyproject.toml
 ├── README.md
@@ -415,7 +415,7 @@ luxonis-perception-deployment-lab/
 
 - `configs/`: experiment definitions and parameter sweeps.
 - `src/pipeline_spec/`: YAML loading, validation, and typed spec objects.
-- `src/pipeline_builder/`: concrete DepthAI pipeline construction.
+- `src/pipeline_builder/`: concrete edge perception pipeline construction.
 - `src/runner/`: live, replay, and campaign execution.
 - `src/profiler/`: quantitative runtime metrics.
 - `src/validator/`: perceptual stability evaluation.
@@ -498,7 +498,7 @@ The repository already covers the full loop from:
 - reporting,
 - and recommendation.
 
-In practice, the repo already functions as a **complete experimentation and decision lab** for Luxonis perception pipelines.
+In practice, the repo already functions as a complete experimentation and decision lab for deployment-oriented perception pipelines.
 
 ---
 
@@ -518,15 +518,10 @@ This core is stable enough to support future extensions such as:
   - TFLite where appropriate
   - TensorRT on local GPU
 - future integration with:
-  - Luxonis HubAI
-  - ModelConverter
-  - `.blob`
-  - `.superblob`
-  - `.dlc`
-- exploration of deployment targets such as:
-  - RVC2
-  - RVC3
-  - RVC4
+  - model conversion toolchains
+  - deployment-specific artifact formats
+  - hardware-oriented inference packaging
+- exploration of heterogeneous edge deployment targets
 - more advanced recommenders:
   - multi-objective
   - scenario-aware
@@ -542,16 +537,16 @@ This project was developed and validated in an environment similar to:
 - Python 3.12
 - Git
 - Docker available
-- Luxonis / OAK-1 device
-- DepthAI v3 style APIs
+- OAK-1 / DepthAI-compatible device
+- Modern Python-based edge AI APIs
 
 ---
 
 ## Operational notes
 
-### Replay still depends on Luxonis hardware
+### Replay still depends on edge hardware acceleration
 
-Even when the input is a recorded video, the pipeline still executes on device, so replay mode still depends on the Luxonis hardware path.
+Even when the input is a recorded video, replay mode may still depend on edge hardware acceleration and device-specific execution paths depending on the selected backend.
 
 ### Qt / OpenCV font warnings
 
